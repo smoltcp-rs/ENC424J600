@@ -1,0 +1,28 @@
+[package]
+categories = ["embedded", "no-std"]
+name = "enc424j600"
+description = "Embbeded Rust Ethernet driver for ENC424J600 Ethernet controller with SPI interface, compatible with STM32F4xx"
+authors = ["Harry Ho <hh@m-labs.hk>"]
+version = "0.1.0"
+keywords = ["ethernet", "eth", "enc424j600", "stm32", "stm32f4xx"]
+repository = "https://github.com/smoltcp-rs/ENC424J600"
+edition = "2018"
+
+[dependencies]
+volatile-register = "0.2"
+aligned = "0.3"
+stm32f4xx-hal = { version = "0.8" , optional = true }
+smoltcp = { version = "0.6.0", default-features = false, features = ["proto-ipv4", "proto-ipv6", "socket-icmp", "socket-udp", "socket-tcp", "log", "verbose", "ethernet"], optional = true }
+log = { version = "0.4", optional = true }
+
+[features]
+smoltcp-phy = ["smoltcp", "log"]
+stm32f407 = ["stm32f4xx-hal/stm32f407"]
+default = []
+
+[profile.release]
+codegen-units = 1
+incremental = false
+debug = true
+opt-level = "s"
+lto = true

@@ -23,7 +23,8 @@ pub const SPI_CLOCK: MegaHertz = MegaHertz(14);
 /// SPI Opcodes
 const RCRU: u8 = 0b0010_0000;
 const WCRU: u8 = 0b0010_0010;
-const ERXDATA: u8 = 0b0010_1100;    // Treated as 8-bit opcode followed by data
+const RERXDATA: u8 = 0b0010_1100;   // 8-bit opcode followed by data
+const WEGPDATA: u8 = 0b0010_1010;   // 8-bit opcode followed by data
 
 /// SPI Register Mapping
 /// Note: PSP interface use different address mapping
@@ -44,6 +45,11 @@ pub const ERXTAIL: u8 = 0x06;       // 16-bit data
 pub const EIR: u8 = 0x1c;           // 16-bit data
 pub const ECON1: u8 = 0x1e;         // 16-bit data
 pub const MAMXFL: u8 = 0x4a;        // 16-bit data
+// TX Registers
+pub const EGPWRPT: u8 = 0x88;       // 16-bit data
+pub const ETXST: u8 = 0x00;         // 16-bit data
+pub const ETXSTAT: u8 = 0x12;       // 16-bit data
+pub const ETXLEN: u8 = 0x02;        // 16-bit data
 
 /// Struct for SPI I/O interface on ENC424J600
 /// Note: stm32f4xx_hal::spi's pins include: SCK, MISO, MOSI
@@ -82,11 +88,19 @@ impl <SPI: Transfer<u8>,
         Ok(((r_data_hi as u16) << 8) | r_data_lo as u16)
     }
 
-    // Currently requires manual slicing (buf[1:]) for the data read back
+    // Currently requires manual slicing (buf[1..]) for the data read back
     pub fn read_rxdat<'a>(&mut self, buf: &'a mut [u8], data_length: u32) 
-                         -> Result<u8, SpiPortError> {
-        let r_valid = self.r_n(buf, ERXDATA, data_length)?;
+                         -> Result<(), SpiPortError> {
+        let r_valid = self.r_n(buf, RERXDATA, data_length)?;
         Ok(r_valid)
+    }
+
+    // Currenly requires actual data to be stored in buf[1..] instead of buf[0..]
+    // TODO: Maybe better naming?
+    pub fn write_txdat<'a>(&mut self, buf: &'a mut [u8], data_length: u32) 
+                          -> Result<(), SpiPortError> {
+        let w_valid = self.w_n(buf, WEGPDATA, data_length)?;
+        Ok(w_valid)
     }
 
     pub fn write_reg_8b(&mut self, addr: u8, data: u8) -> Result<(), SpiPortError> {
@@ -136,17 +150,40 @@ impl <SPI: Transfer<u8>,
     // Note: buf must be at least (data_length + 1)-byte long
     // TODO: Check and raise error for array size < (data_length + 1)
     fn r_n<'a>(&mut self, buf: &'a mut [u8], opcode: u8, data_length: u32) 
-           -> Result<u8, SpiPortError> {
+              -> Result<(), SpiPortError> {
         // Enable chip select
         self.nss.set_low();
         // Start writing to SLAVE
         buf[0] = opcode;
         match self.spi.transfer(buf) {
-            // TODO: Now returns a boolean, maybe use Option<u8> later on?
             Ok(_) => {
                 // Disable chip select
                 self.nss.set_high();
-                Ok(1)
+                Ok(())
+            },
+            // TODO: Maybe too naive?
+            Err(e) => {
+                // Disable chip select
+                self.nss.set_high();
+                Err(SpiPortError::TransferError)
+            }
+        }
+    }
+
+    // Note: buf[0] is currently reserved for opcode to overwrite
+    // TODO: Actual data should start from buf[0], not buf[1]
+    fn w_n<'a>(&mut self, buf: &'a mut [u8], opcode: u8, data_length: u32) 
+              -> Result<(), SpiPortError> {
+        // Enable chip select
+        self.nss.set_low();
+        // Start writing to SLAVE
+        buf[0] = opcode;
+        // TODO: Maybe need to copy data to buf later on
+        match self.spi.transfer(buf) {
+            Ok(_) => {
+                // Disable chip select
+                self.nss.set_high();
+                Ok(())
             },
             // TODO: Maybe too naive?
             Err(e) => {

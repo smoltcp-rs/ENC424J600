@@ -86,6 +86,7 @@ impl RxPacket {
         }
     }
 
+    /// TODO: Mostly for debugging only?
     pub fn get_frame_byte(&self, i: usize) -> u8 {
         self.frame[i]
     }

@@ -20,6 +20,16 @@ smoltcp-phy = ["smoltcp"]
 stm32f407 = ["stm32f4xx-hal/stm32f407"]
 default = []
 
+[dev-dependencies]
+cortex-m = "0.5"
+cortex-m-rt = "0.6"
+embedded-hal = "0.2"
+panic-itm = "0.4"
+
+[[example]]
+name = "tx_stm32f407"
+required-features = ["stm32f407"]
+
 [profile.release]
 codegen-units = 1
 incremental = false

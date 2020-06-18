@@ -2,6 +2,12 @@
 # It is not intended for manual editing.
 [[package]]
 name = "aligned"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d39da9b88ae1a81c03c9c082b8db83f1d0e93914126041962af61034ab44c4a5"
+
+[[package]]
+name = "aligned"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb1ce8b3382016136ab1d31a1b5ce807144f8b7eb2d5f16b2108f0f07edceb94"
@@ -58,11 +64,23 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "cortex-m"
+version = "0.5.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c0b159a1e8306949579de3698c841dba58058197b65c60807194e4fa1e7a554"
+dependencies = [
+ "aligned 0.2.0",
+ "bare-metal",
+ "cortex-m 0.6.2",
+ "volatile-register",
+]
+
+[[package]]
+name = "cortex-m"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2954942fbbdd49996704e6f048ce57567c3e1a4e2dc59b41ae9fde06a01fc763"
 dependencies = [
- "aligned",
+ "aligned 0.3.2",
  "bare-metal",
  "volatile-register",
 ]
@@ -102,8 +120,12 @@ dependencies = [
 name = "enc424j600"
 version = "0.1.0"
 dependencies = [
- "aligned",
+ "aligned 0.3.2",
+ "cortex-m 0.5.10",
+ "cortex-m-rt",
+ "embedded-hal",
  "log",
+ "panic-itm",
  "smoltcp",
  "stm32f4xx-hal",
  "volatile-register",
@@ -147,6 +169,15 @@ name = "nb"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1411551beb3c11dedfb0a90a0fa256b47d28b9ec2cdff34c25a2fa59e45dbdc"
+
+[[package]]
+name = "panic-itm"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98830d17a95587207e41edaa3009b143d326ce134b0e3538ac98246a67d66cc3"
+dependencies = [
+ "cortex-m 0.6.2",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -227,7 +258,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11460b4de3a84f072e2cf6e76306c64d27f405a0e83bace0a726f555ddf4bf33"
 dependencies = [
  "bare-metal",
- "cortex-m",
+ "cortex-m 0.6.2",
  "vcell",
 ]
 
@@ -239,7 +270,7 @@ checksum = "b3a2f044469d1e3aff2cd02bee8b2724f3d5d91f3175e5d1ec99770320d16192"
 dependencies = [
  "bare-metal",
  "cast",
- "cortex-m",
+ "cortex-m 0.6.2",
  "cortex-m-rt",
  "embedded-hal",
  "nb",

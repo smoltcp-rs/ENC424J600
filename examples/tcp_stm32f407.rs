@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+use core::env;
+
 extern crate panic_itm;
 use cortex_m::iprintln;
 
@@ -88,6 +90,29 @@ fn main() -> ! {
     iprintln!(stim0, 
         "Eth TCP Server on STM32-F407 via NIC100/ENC424J600");
 
+    // Get IP address from args
+    let arg_ip_raw = env!("ENC424J600_TCP_IP");
+    let mut arg_ip_str = arg_ip_raw.split('.');
+    let mut arg_ip: [u8; 4] = [0; 4];
+    for i in 0..4 {
+        match arg_ip_str.next() {
+            Some(x) => {
+                match x.parse() {
+                    Ok(x_) => { arg_ip[i] = x_ },
+                    Err(_) => { panic!("IPv4 address invalid!") }
+                }
+            },
+            None => { panic!("IPv4 address invalid!") }
+        }
+    }
+    // Get IP prefix length from args
+    let arg_ip_pref_raw = env!("ENC424J600_TCP_PREF");
+    let mut arg_ip_pref: u8 = 0;
+    match arg_ip_pref_raw.parse() {
+        Ok(x) => { arg_ip_pref = x },
+        Err(_) => { panic!("IP prefix length invalid!") }
+    }
+
     // NIC100 / ENC424J600 Set-up
     let spi1 = dp.SPI1;
     let gpioa = dp.GPIOA.split();
@@ -139,7 +164,8 @@ fn main() -> ! {
     let device = smoltcp_phy::SmoltcpDevice::new(&mut spi_eth);
     let mut neighbor_cache_entries = [None; 16];
     let mut neighbor_cache = NeighborCache::new(&mut neighbor_cache_entries[..]);
-    let ip_addr = IpCidr::new(IpAddress::v4(192, 168, 1, 75), 24);
+    let ip_addr = IpCidr::new(IpAddress::v4(
+        arg_ip[0], arg_ip[1], arg_ip[2], arg_ip[3]), arg_ip_pref);
     let mut ip_addrs = [ip_addr];
     let mut iface = EthernetInterfaceBuilder::new(device)
             .ethernet_addr(EthernetAddress(eth_mac_addr))
@@ -191,7 +217,6 @@ fn main() -> ! {
                 iprintln!(stim0, 
                     "[{}] Listening to port 1234 for echoing, auto-closing in 10s", instant);
                 socket.listen(1234).unwrap();
-                //socket.set_keep_alive(Some(Duration::from_millis(1000)));
                 socket.set_timeout(Some(Duration::from_millis(10000)));
             }
             if socket.can_recv() {

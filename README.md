@@ -1,12 +1,7 @@
 # ENC424J600 Driver
 
+
 ## Examples
-
-<!---
-TODO: Remove the installation/env setup steps in the following how-to;
-      only keep example-specific steps.
--->
-
 
 ### Endless Pinging - `tx_stm32f407`
 
@@ -18,37 +13,43 @@ This program demonstrates the Ethernet TX capability on an STM32F407 board conne
 * Source IP Address: 192.168.1.100
 * Frame Length in Bytes: 64
 
-Note that this program uses ITM for logging output.
+This program assumes that **GPIO PA1** is connected to SPISEL of the Ethernet module. The program output is logged via ITM.
 
 #### How-to
 
-1.  Prepare the Rust and Cargo environment for building and running the program on STM32F4xx Cortex-M platforms.
+1.  On a console window, run OpenOCD and debug the example program:
+    ```sh
+    $ nix-shell
+    [nix-shell]$ run-openocd-f4x
+    [nix-shell]$ tx_stm32f407
+    ```
 
-2.  Install [`itm`](https://docs.rs/itm/) on Cargo:
+2.  On a separate console window, run [`itmdump`](https://docs.rs/itm/) to observe the output:
+    ```sh
+    $ nix-shell
+    [nix-shell]$ run-itmdump-follow
     ```
-    cargo install itm
-    ```
-    If necessary, add your installation location (`~/.cargo/bin` by default) to `$PATH`.
 
-3.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger. 
+#### Expected Output
 
-4.  Run OpenOCD with the appropriate configuration files (e.g. `interface/stlink-v2.cfg`, `target/stm32f4x.cfg`).
+(Note: the MAC address is an example only.)
 
-5.  With OpenOCD running, build and run this program:
-    ```
-    cargo run --release --example=tx_stm32f407 --features=stm32f407
-    ```
-    Use appropriate GDB commands such as `c` for continuing.
-
-6.  On a separate console window, monitor and observe the ITM output, which is located at the same directory as you started OpenOCD:
-    ```
-    itmdump -f itm.log -F
-    ```
+```
+Eth TX Pinging on STM32-F407 via NIC100/ENC424J600
+Ethernet initialised.
+MAC Address = 04-91-62-3e-fc-1e
+Promiscuous Mode ON
+Sending packet (len=64): dest=ff-ff-ff-ff-ff-ff src=08-60-6e-44-42-95 data=08060001 08000604 ...
+Packet sent
+Sending packet (len=64): dest=ff-ff-ff-ff-ff-ff src=08-60-6e-44-42-95 data=08060001 08000604 ...
+Packet sent
+...
+```
 
 
 ### TCP Echoing & Greeting - `tcp_stm32f407`
 
-This program demonstrates the TCP connectivity using **smoltcp** on an STM32F407 board connected to an ENC424J600 module via SPI. Once loaded and initialised, two TCP sockets will be opened on the IP address 192.168.1.75/24. These sockets are:
+This program demonstrates the TCP connectivity using **smoltcp** on an STM32F407 board connected to an ENC424J600 module via SPI. Once loaded and initialised, two TCP sockets will be opened on a specific IPv4 address. These sockets are:
 
 1.  **Echoing port - 1234**
     *   This socket receives raw data on all incoming TCP packets on the said port and prints them back on the output.
@@ -57,35 +58,85 @@ This program demonstrates the TCP connectivity using **smoltcp** on an STM32F407
     *   This socket waits for a single incoming TCP packet on the said port, and sends a TCP packet holding a text of greeting on the port.
     *   Note that once a greeting is sent, the port is closed immediately. Further packets received by the controller are dropped until the initiator closes the port.
 
-Note that this program uses ITM for logging output.
+This program assumes that **GPIO PA1** is connected to SPISEL of the Ethernet module. The program output is logged via ITM.
 
 #### How-to
 
-1.  Prepare the Rust and Cargo environment for building and running the program on STM32F4xx Cortex-M platforms.
-
-2.  Install [`itm`](https://docs.rs/itm/) on Cargo:
-    ```
-    cargo install itm
-    ```
-    If necessary, add your installation location (`~/.cargo/bin` by default) to `$PATH`.
-
-3.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger. 
-
-4.  Run OpenOCD with the appropriate configuration files (e.g. `interface/stlink-v2.cfg`, `target/stm32f4x.cfg`).
-
-5.  With OpenOCD running, build and run this program:
-    ```
-    cargo run --release --example=tcp_stm32f407 --features=stm32f407,smoltcp-phy-all
-    ```
-    Use appropriate GDB commands such as `c` for continuing.
-
-6.  On a separate console window, monitor and observe the ITM output, which is located at the same directory as you started OpenOCD:
-    ```
-    itmdump -f itm.log -F
+1.  On a console window, run OpenOCD and debug the example program. Choose your own IPv4 address and prefix length:
+    ```sh
+    $ nix-shell
+    [nix-shell]$ run-openocd-f4x
+    [nix-shell]$ tcp_stm32f407 <ip> <prefix>
     ```
 
-7.  To test the TCP ports, you may use the Netcat utility (`nc`):
+2.  On a separate console window, run [`itmdump`](https://docs.rs/itm/) to observe the output:
+    ```sh
+    $ nix-shell
+    [nix-shell]$ run-itmdump-follow
     ```
-    nc 192.168.1.75 <port-number>
+
+3.  To test the TCP ports, open another console window and use utilities like NetCat (`nc`):
+    ```sh
+    $ nc <ip> <port-number>
     ```
-    Multiple instances of Netcat can run to use all the ports simultaneously. Use Ctrl+C to close the port manually.
+    Multiple instances of Netcat can run to use all the ports simultaneously. Use Ctrl+C to close the port manually (especially for the greeting port).
+
+#### Expected Output
+
+(Note: the IP address, MAC address and timestamps shown below are examples only.)
+
+ITM output at the initial state:
+```
+Eth TCP Server on STM32-F407 via NIC100/ENC424J600
+Ethernet initialised.
+Timer initialised.
+MAC Address = 04-91-62-3e-fc-1e
+TCP sockets will listen at 192.168.1.77/24
+[0.0s] Listening to port 1234 for echoing, auto-closing in 10s
+[0.0s] Listening to port 4321 for greeting, please open the port
+```
+
+The user opens port 1234 and sends two packets with the following commands:
+```sh
+$ nc 192.168.1.77 1234
+Hello World!
+Bye World!
+```
+
+The following is appended to the ITM output:
+```
+[12.950s] Received packet: Ok("Hello world!\n")
+[19.0s] Received packet: Ok("Bye world!\n")
+```
+
+The user then opens port 4321 with the following command, and immediately receives the following message on their console:
+```sh
+$ nc 192.168.1.77 4321
+Welcome to the server demo for STM32-F407!
+```
+
+The following is appended to the ITM output:
+```
+[24.200s] Greeting sent, socket closed
+```
+
+After 10 seconds of the user not sending any more packets on port 1234, the following is appended to the ITM output; meanwhile, port 1234 is closed by `nc` for the user:
+```
+[29.0s] Listening to port 1234 for echoing, auto-closing in 10s
+```
+
+The user can now re-open port 1234 again.
+
+For port 4321, without closing the port by exiting `nc`, the user keeps sending any packets with the utility. Since the Ethernet controller has already closed the port, these new packets are dropped and the following error messages are appended to the ITM output:
+```
+[35.950s] Poll error: Dropped
+[36.150s] Poll error: Dropped
+...
+```
+
+The user then closes port 4321 by exiting `nc`, and the following message is appended to the ITM output:
+```
+[40.200s] Listening to port 4321 for greeting, please open the port
+```
+
+The user can now re-open port 4321 again.

@@ -2,16 +2,14 @@
 #![no_main]
 
 extern crate panic_itm;
-use cortex_m::{iprint, iprintln};
+use cortex_m::iprintln;
 
 use cortex_m_rt::entry;
-use embedded_hal::watchdog::{WatchdogEnable, Watchdog};
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::blocking::delay::DelayMs;
 use stm32f4xx_hal::{
     rcc::RccExt,
     gpio::GpioExt,
-    watchdog::IndependentWatchdog,
     time::U32Ext,
     stm32::{CorePeripherals, Peripherals},
     delay::Delay,
@@ -41,7 +39,7 @@ fn main() -> ! {
     let stim0 = &mut itm.stim[0];
 
     iprintln!(stim0, 
-        "Eth TX Pinging on STM32-H407 via NIC100/ENC424J600");
+        "Eth TX Pinging on STM32-F407 via NIC100/ENC424J600");
 
     // NIC100 / ENC424J600 Set-up
     let spi1 = dp.SPI1;
@@ -71,9 +69,6 @@ fn main() -> ! {
             panic!("Ethernet initialisation Failed!")
         }
     }
-    delay.delay_ms(1_u32);
-    iprintln!(stim0, 
-        "- Delayed 1000us (>=256us), PHY regs are now available");
 
     // Read MAC
     let mut eth_mac_addr: [u8; 6] = [0; 6];

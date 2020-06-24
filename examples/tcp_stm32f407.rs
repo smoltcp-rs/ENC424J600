@@ -86,7 +86,7 @@ fn main() -> ! {
     let stim0 = &mut itm.stim[0];
 
     iprintln!(stim0, 
-        "Eth TCP Server on STM32-H407 via NIC100/ENC424J600");
+        "Eth TCP Server on STM32-F407 via NIC100/ENC424J600");
 
     // NIC100 / ENC424J600 Set-up
     let spi1 = dp.SPI1;

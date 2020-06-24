@@ -36,6 +36,7 @@ fn main() -> ! {
         .freeze();
     let mut delay = Delay::new(cp.SYST, clocks);
 
+    // Init ITM & use Stimulus Port 0
     let mut itm = cp.ITM;
     let stim0 = &mut itm.stim[0];
 
@@ -79,9 +80,9 @@ fn main() -> ! {
     spi_eth.read_from_mac(&mut eth_mac_addr);
     iprintln!(stim0, 
         "MAC Address = {:02x}-{:02x}-{:02x}-{:02x}-{:02x}-{:02x}", 
-        eth_mac_addr[5], eth_mac_addr[4], 
-        eth_mac_addr[3], eth_mac_addr[2], 
-        eth_mac_addr[1], eth_mac_addr[0]);
+        eth_mac_addr[0], eth_mac_addr[1], 
+        eth_mac_addr[2], eth_mac_addr[3], 
+        eth_mac_addr[4], eth_mac_addr[5]);
     // Set to promiscuous mode
     spi_eth.set_promiscuous();
     iprintln!(stim0, 
@@ -119,7 +120,7 @@ fn main() -> ! {
             eth_tx_packet.get_frame_byte(16), eth_tx_packet.get_frame_byte(17),
             eth_tx_packet.get_frame_byte(18), eth_tx_packet.get_frame_byte(19)
         );
-        spi_eth.send_raw_packet(eth_tx_packet);
+        spi_eth.send_raw_packet(&eth_tx_packet);
         iprintln!(stim0, 
             "Packet sent");
         delay.delay_ms(100_u32);

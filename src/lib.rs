@@ -1,7 +1,5 @@
 #![no_std]
 
-use core::fmt;
-
 /// STM32F4xx-HAL specific implementations
 pub mod spi;
 use stm32f4xx_hal::{
@@ -17,14 +15,12 @@ pub mod tx;
 #[cfg(feature="smoltcp")]
 pub mod smoltcp_phy;
 
-pub trait EthController {
+pub trait EthController<'c> {
     fn init_dev(&mut self) -> Result<(), EthControllerError>;
     fn init_rxbuf(&mut self) -> Result<(), EthControllerError>;
-    // TODO:
     fn init_txbuf(&mut self) -> Result<(), EthControllerError>;
-    fn receive_next(&mut self) -> Result<rx::RxPacket, EthControllerError>;
-    // TODO: send_packet() is not using TxBuffer, but it should later on
-    fn send_raw_packet(&mut self, packet: tx::TxPacket) -> Result<(), EthControllerError>;
+    fn receive_next(&mut self, is_poll: bool) -> Result<rx::RxPacket, EthControllerError>;
+    fn send_raw_packet(&mut self, packet: &tx::TxPacket) -> Result<(), EthControllerError>;
     fn set_promiscuous(&mut self) -> Result<(), EthControllerError>;
     fn read_from_mac(&mut self, mac: &mut [u8]) -> Result<(), EthControllerError>;
 }
@@ -32,11 +28,13 @@ pub trait EthController {
 /// TODO: Improve these error types
 pub enum EthControllerError {
     SpiPortError,
-    GeneralError
+    GeneralError,
+    // TODO: Better name?
+    NoRxPacketError
 }
 
 impl From<spi::SpiPortError> for EthControllerError {
-    fn from(e: spi::SpiPortError) -> EthControllerError {
+    fn from(_: spi::SpiPortError) -> EthControllerError {
         EthControllerError::SpiPortError
     }
 }
@@ -51,18 +49,17 @@ pub struct SpiEth<SPI: Transfer<u8>,
 
 impl <SPI: Transfer<u8>, 
       NSS: OutputPin> SpiEth<SPI, NSS> {
-    pub fn new(spi: SPI, mut nss: NSS) -> Self {
+    pub fn new(spi: SPI, nss: NSS) -> Self {
         SpiEth {
             spi_port: spi::SpiPort::new(spi, nss),
             rx_buf: rx::RxBuffer::new(),
-            // TODO: tx_buf
             tx_buf: tx::TxBuffer::new()
         }
     }
 }
 
-impl <SPI: Transfer<u8>, 
-      NSS: OutputPin> EthController for SpiEth<SPI, NSS> {
+impl <'c, SPI: Transfer<u8>, 
+      NSS: OutputPin> EthController<'c> for SpiEth<SPI, NSS> {
     fn init_dev(&mut self) -> Result<(), EthControllerError> {
         // Write 0x1234 to EUDAST
         self.spi_port.write_reg_16b(spi::EUDAST, 0x1234)?;
@@ -96,23 +93,27 @@ impl <SPI: Transfer<u8>,
         self.spi_port.write_reg_16b(spi::MAMXFL, rx::RAW_FRAME_LENGTH_MAX as u16)?;
         // Enable RXEN (ECON1<0>)
         let econ1 = self.spi_port.read_reg_16b(spi::ECON1)?;
-        self.spi_port.write_reg_16b(spi::ECON1, 0x1 | (econ1 & 0xfffe));
+        self.spi_port.write_reg_16b(spi::ECON1, 0x1 | (econ1 & 0xfffe))?;
         Ok(())
     }
 
-    /// TODO:
     fn init_txbuf(&mut self) -> Result<(), EthControllerError> {
         // Set EGPWRPT pointer
         self.spi_port.write_reg_16b(spi::EGPWRPT, 0x0000)?;
         Ok(())
     }
 
-    /// Receive the next packet 
-    fn receive_next(&mut self) -> Result<rx::RxPacket, EthControllerError> { 
+    /// Receive the next packet and copy it to rx_packet_buf
+    /// Set is_poll to true for returning until PKTIF is set;
+    /// Set is_poll to false for returning Err when PKTIF is not set
+    fn receive_next(&mut self, is_poll: bool) -> Result<rx::RxPacket, EthControllerError> { 
         // Poll PKTIF (EIR<4>) to check if it is set
         loop {
             let eir = self.spi_port.read_reg_16b(spi::EIR)?;
             if eir & 0x40 == 0x40 { break }
+            if !is_poll {
+                return Err(EthControllerError::NoRxPacketError)
+            }
         }
         // Set ERXRDPT pointer to next_addr
         self.spi_port.write_reg_16b(spi::ERXRDPT, self.rx_buf.get_next_addr())?;
@@ -132,7 +133,7 @@ impl <SPI: Transfer<u8>,
         // Read frame bytes
         let mut frame_buf = [0; rx::RAW_FRAME_LENGTH_MAX];
         self.spi_port.read_rxdat(&mut frame_buf, rx_packet.get_frame_length() as u32)?;
-        rx_packet.write_to_frame(&frame_buf[1..]);
+        rx_packet.copy_frame_from(&frame_buf[1..]);
         // Set ERXTAIL pointer to (next_addr - 2)
         if self.rx_buf.get_next_addr() > rx::ERXST_DEFAULT {
             self.spi_port.write_reg_16b(spi::ERXTAIL, self.rx_buf.get_next_addr() - 2)?;
@@ -147,14 +148,13 @@ impl <SPI: Transfer<u8>,
     }
 
     /// Send an established packet
-    /// TODO: Should be eliminated when TxBuffer is used instead later on
-    fn send_raw_packet(&mut self, packet: tx::TxPacket) -> Result<(), EthControllerError> {
+    fn send_raw_packet(&mut self, packet: &tx::TxPacket) -> Result<(), EthControllerError> {
         // Set EGPWRPT pointer to next_addr
         self.spi_port.write_reg_16b(spi::EGPWRPT, self.tx_buf.get_next_addr())?;
         // Copy packet data to SRAM Buffer
         // 1-byte Opcode is included 
         let mut txdat_buf: [u8; tx::RAW_FRAME_LENGTH_MAX + 1] = [0; tx::RAW_FRAME_LENGTH_MAX + 1];
-        packet.copy_from_frame(&mut txdat_buf[1..]);
+        packet.write_frame_to(&mut txdat_buf[1..]);
         self.spi_port.write_txdat(&mut txdat_buf, packet.get_frame_length() as u32)?;
         // Set ETXST to packet start address
         self.spi_port.write_reg_16b(spi::ETXST, self.tx_buf.get_next_addr())?;
@@ -168,7 +168,8 @@ impl <SPI: Transfer<u8>,
             econ1_lo = self.spi_port.read_reg_8b(spi::ECON1)?;
             if econ1_lo & 0x02 == 0x02 { break }
         }
-        // TODO: Read ETXSTAT
+        // TODO: Read ETXSTAT to understand Ethernet transmission status
+        // (See: Register 9-2, ENC424J600 Data Sheet)
         // Update TX buffer start address
         self.tx_buf.set_next_addr((self.tx_buf.get_next_addr() + packet.get_frame_length() as u16) % 
             tx::GPBUFEN_DEFAULT);
@@ -177,11 +178,11 @@ impl <SPI: Transfer<u8>,
 
     /// Set controller to Promiscuous Mode
     fn set_promiscuous(&mut self) -> Result<(), EthControllerError> {
-        // From ENC424J600 Data Sheet Section 10.12: 
+        // From Section 10.12, ENC424J600 Data Sheet: 
         // "To accept all incoming frames regardless of content (Promiscuous mode), 
         // set the CRCEN, RUNTEN, UCEN, NOTMEEN and MCEN bits."
-        let mut erxfcon_lo = self.spi_port.read_reg_8b(spi::ERXFCON)?;
-        self.spi_port.write_reg_8b(spi::ERXFCON, 0b0101_1110 | (erxfcon_lo & 0b1010_0001));
+        let erxfcon_lo = self.spi_port.read_reg_8b(spi::ERXFCON)?;
+        self.spi_port.write_reg_8b(spi::ERXFCON, 0b0101_1110 | (erxfcon_lo & 0b1010_0001))?;
         Ok(())
     }
 

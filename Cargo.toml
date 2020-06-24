@@ -13,10 +13,14 @@ volatile-register = "0.2"
 aligned = "0.3"
 stm32f4xx-hal = { version = "0.8" , optional = true }
 smoltcp = { version = "0.6.0", default-features = false, features = ["proto-ipv4", "proto-ipv6", "socket-icmp", "socket-udp", "socket-tcp", "log", "verbose", "ethernet"], optional = true }
-log = { version = "0.4" }
+log = "0.4"
 
 [features]
 smoltcp-phy = ["smoltcp"]
+smoltcp-phy-all = [
+    "smoltcp/socket-raw", "smoltcp/socket-udp", "smoltcp/socket-tcp",
+    "smoltcp/proto-ipv4", "smoltcp/proto-ipv6"
+]
 stm32f407 = ["stm32f4xx-hal/stm32f407"]
 default = []
 
@@ -29,6 +33,10 @@ panic-itm = "0.4"
 [[example]]
 name = "tx_stm32f407"
 required-features = ["stm32f407"]
+
+[[example]]
+name = "tcp_stm32f407"
+required-features = ["stm32f407", "smoltcp-phy-all", "smoltcp/log"]
 
 [profile.release]
 codegen-units = 1

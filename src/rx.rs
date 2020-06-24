@@ -8,7 +8,7 @@ pub const RAW_FRAME_LENGTH_MAX: usize = 0x1000;
 /// Receive Status Vector Length
 pub const RSV_LENGTH: usize = 6;
 
-/// Struct for RX Buffer
+/// Struct for RX Buffer on the hardware
 /// TODO: Should be a singleton
 pub struct RxBuffer {
     wrap_addr: u16,
@@ -80,10 +80,19 @@ impl RxPacket {
         self.frame_length
     }
 
-    pub fn write_to_frame(&mut self, raw_frame: &[u8]) {
+    pub fn copy_frame_from(&mut self, raw_frame: &[u8]) {
         for i in 0..self.frame_length {
             self.frame[i] = raw_frame[i];
         }
+    }
+    pub fn write_frame_to(&self, frame: &mut [u8]) {
+        for i in 0..self.frame_length {
+            frame[i] = self.frame[i];
+        }
+    }
+
+    pub fn get_mut_frame(&mut self) -> &mut [u8] {
+        &mut self.frame
     }
 
     /// TODO: Mostly for debugging only?

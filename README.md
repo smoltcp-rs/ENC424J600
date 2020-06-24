@@ -13,11 +13,11 @@ This program demonstrates the Ethernet TX capability on an STM32F407 board conne
 * Source IP Address: 192.168.1.100
 * Frame Length in Bytes: 64
 
-This program assumes that **GPIO PA1** is connected to SPISEL of the Ethernet module. The program output is logged via ITM.
+This program assumes that the **SPI1** port is connected to the Ethernet module, and the **GPIO PA1** pin is connected to its SPISEL pin. The program output is logged via ITM stimulus port 0.
 
 #### How-to
 
-1.  On a console window, run OpenOCD and debug the example program:
+1.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger. Then, on a console window, run OpenOCD and debug the example program:
     ```sh
     $ nix-shell
     [nix-shell]$ run-openocd-f4x
@@ -58,11 +58,11 @@ This program demonstrates the TCP connectivity using **smoltcp** on an STM32F407
     *   This socket waits for a single incoming TCP packet on the said port, and sends a TCP packet holding a text of greeting on the port.
     *   Note that once a greeting is sent, the port is closed immediately. Further packets received by the controller are dropped until the initiator closes the port.
 
-This program assumes that **GPIO PA1** is connected to SPISEL of the Ethernet module. The program output is logged via ITM.
+This program assumes that the **SPI1** port is connected to the Ethernet module, and the **GPIO PA1** pin is connected to its SPISEL pin. The program output is logged via ITM stimulus port 0.
 
 #### How-to
 
-1.  On a console window, run OpenOCD and debug the example program. Choose your own IPv4 address and prefix length:
+1.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger. Then, on a console window, run OpenOCD and debug the example program. Choose your own IPv4 address and prefix length:
     ```sh
     $ nix-shell
     [nix-shell]$ run-openocd-f4x

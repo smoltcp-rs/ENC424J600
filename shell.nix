@@ -26,7 +26,7 @@ let
     echo "        - Run tx_stm32f407 example."
     echo "  tcp_stm32f407 <ip> <pref>"
     echo "        - Run tcp_stm32f407 example with the IPv4"
-    echo "          address <ip> \(dot-separated\) and prefix length <pref>."
+    echo "          address <ip> (dot-separated) and prefix length <pref>."
     echo ""
   '';
 

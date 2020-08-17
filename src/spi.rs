@@ -4,52 +4,58 @@ use stm32f4xx_hal::{
         blocking::spi::Transfer,
         digital::v2::OutputPin,
     },
-    time::MegaHertz,
     spi,
 };
-///
-/// FIXME: Move the following to somewhere else
-///
 use crate::rx;
 
-/// Must use SPI mode cpol=0, cpha=0
-pub const SPI_MODE: spi::Mode = spi::Mode {
-    polarity: spi::Polarity::IdleLow,
-    phase: spi::Phase::CaptureOnFirstTransition,
-};
-/// Max freq = 14 MHz
-pub const SPI_CLOCK: MegaHertz = MegaHertz(14);
+pub mod interfaces {
+    use stm32f4xx_hal::{
+        spi,
+        time::MegaHertz
+    };
+    /// Must use SPI mode cpol=0, cpha=0
+    pub const SPI_MODE: spi::Mode = spi::Mode {
+        polarity: spi::Polarity::IdleLow,
+        phase: spi::Phase::CaptureOnFirstTransition,
+    };
+    /// Max freq = 14 MHz
+    pub const SPI_CLOCK: MegaHertz = MegaHertz(14);
+}
 
-/// SPI Opcodes
-const RCRU: u8 = 0b0010_0000;
-const WCRU: u8 = 0b0010_0010;
-const RERXDATA: u8 = 0b0010_1100;   // 8-bit opcode followed by data
-const WEGPDATA: u8 = 0b0010_1010;   // 8-bit opcode followed by data
+pub mod opcodes {
+    /// SPI Opcodes
+    pub const RCRU: u8 = 0b0010_0000;
+    pub const WCRU: u8 = 0b0010_0010;
+    pub const RERXDATA: u8 = 0b0010_1100;   // 8-bit opcode followed by data
+    pub const WEGPDATA: u8 = 0b0010_1010;   // 8-bit opcode followed by data
+}
 
-/// SPI Register Mapping
-/// Note: PSP interface use different address mapping
-// SPI Init Reset Registers
-pub const EUDAST: u8 = 0x16;        // 16-bit data
-pub const ESTAT: u8 = 0x1a;         // 16-bit data
-pub const ECON2: u8 = 0x6e;         // 16-bit data
-//
-pub const ERXFCON: u8 = 0x34;       // 16-bit data
-//
-pub const MAADR3: u8 = 0x60;        // 16-bit data
-pub const MAADR2: u8 = 0x62;        // 16-bit data
-pub const MAADR1: u8 = 0x64;        // 16-bit data
-// RX Registers
-pub const ERXRDPT: u8 = 0x8a;       // 16-bit data
-pub const ERXST: u8 = 0x04;         // 16-bit data
-pub const ERXTAIL: u8 = 0x06;       // 16-bit data
-pub const EIR: u8 = 0x1c;           // 16-bit data
-pub const ECON1: u8 = 0x1e;         // 16-bit data
-pub const MAMXFL: u8 = 0x4a;        // 16-bit data
-// TX Registers
-pub const EGPWRPT: u8 = 0x88;       // 16-bit data
-pub const ETXST: u8 = 0x00;         // 16-bit data
-pub const ETXSTAT: u8 = 0x12;       // 16-bit data
-pub const ETXLEN: u8 = 0x02;        // 16-bit data
+pub mod addrs {
+    /// SPI Register Mapping
+    /// Note: PSP interface use different address mapping
+    // SPI Init Reset Registers
+    pub const EUDAST: u8 = 0x16;        // 16-bit data
+    pub const ESTAT: u8 = 0x1a;         // 16-bit data
+    pub const ECON2: u8 = 0x6e;         // 16-bit data
+    //
+    pub const ERXFCON: u8 = 0x34;       // 16-bit data
+    //
+    pub const MAADR3: u8 = 0x60;        // 16-bit data
+    pub const MAADR2: u8 = 0x62;        // 16-bit data
+    pub const MAADR1: u8 = 0x64;        // 16-bit data
+    // RX Registers
+    pub const ERXRDPT: u8 = 0x8a;       // 16-bit data
+    pub const ERXST: u8 = 0x04;         // 16-bit data
+    pub const ERXTAIL: u8 = 0x06;       // 16-bit data
+    pub const EIR: u8 = 0x1c;           // 16-bit data
+    pub const ECON1: u8 = 0x1e;         // 16-bit data
+    pub const MAMXFL: u8 = 0x4a;        // 16-bit data
+    // TX Registers
+    pub const EGPWRPT: u8 = 0x88;       // 16-bit data
+    pub const ETXST: u8 = 0x00;         // 16-bit data
+    pub const ETXSTAT: u8 = 0x12;       // 16-bit data
+    pub const ETXLEN: u8 = 0x02;        // 16-bit data
+}
 
 /// Struct for SPI I/O interface on ENC424J600
 /// Note: stm32f4xx_hal::spi's pins include: SCK, MISO, MOSI
@@ -77,7 +83,7 @@ impl <SPI: Transfer<u8>,
 
     pub fn read_reg_8b(&mut self, addr: u8) -> Result<u8, SpiPortError> {
         // Using RCRU instruction to read using unbanked (full) address
-        let mut r_data = self.rw_addr_u8(RCRU, addr, 0)?;
+        let mut r_data = self.rw_addr_u8(opcodes::RCRU, addr, 0)?;
         Ok(r_data)
     }
 
@@ -91,7 +97,7 @@ impl <SPI: Transfer<u8>,
     // Currently requires manual slicing (buf[1..]) for the data read back
     pub fn read_rxdat<'a>(&mut self, buf: &'a mut [u8], data_length: u32) 
                          -> Result<(), SpiPortError> {
-        let r_valid = self.r_n(buf, RERXDATA, data_length)?;
+        let r_valid = self.r_n(buf, opcodes::RERXDATA, data_length)?;
         Ok(r_valid)
     }
 
@@ -99,14 +105,14 @@ impl <SPI: Transfer<u8>,
     // TODO: Maybe better naming?
     pub fn write_txdat<'a>(&mut self, buf: &'a mut [u8], data_length: u32) 
                           -> Result<(), SpiPortError> {
-        let w_valid = self.w_n(buf, WEGPDATA, data_length)?;
+        let w_valid = self.w_n(buf, opcodes::WEGPDATA, data_length)?;
         Ok(w_valid)
     }
 
     pub fn write_reg_8b(&mut self, addr: u8, data: u8) -> Result<(), SpiPortError> {
         // TODO: addr should be separated from w_data
         // Using WCRU instruction to write using unbanked (full) address
-        self.rw_addr_u8(WCRU, addr, data)?;
+        self.rw_addr_u8(opcodes::WCRU, addr, data)?;
         Ok(())
     }
 

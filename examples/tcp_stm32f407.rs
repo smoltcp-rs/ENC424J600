@@ -128,7 +128,8 @@ fn main() -> ! {
     // Create SPI1 for HAL
     let spi_eth_port = Spi::spi1(
         spi1, (spi1_sck, spi1_miso, spi1_mosi), 
-        enc424j600::spi::SPI_MODE, enc424j600::spi::SPI_CLOCK.into(),
+        enc424j600::spi::interfaces::SPI_MODE, 
+        enc424j600::spi::interfaces::SPI_CLOCK.into(),
         clocks);
     let mut spi_eth = enc424j600::SpiEth::new(spi_eth_port, spi1_nss);
     // Init
@@ -215,7 +216,7 @@ fn main() -> ! {
             let mut socket = socket_set.get::<TcpSocket>(echo_handle);
             if !socket.is_open() {
                 iprintln!(stim0, 
-                    "[{}] Listening to port 1234 for echoing, auto-closing in 10s", instant);
+                    "[{}] Listening to port 1234 for echoing, time-out in 10s", instant);
                 socket.listen(1234).unwrap();
                 socket.set_timeout(Some(Duration::from_millis(10000)));
             }
@@ -232,7 +233,7 @@ fn main() -> ! {
             if !socket.is_open() {
                 iprintln!(stim0, 
                     "[{}] Listening to port 4321 for greeting, \
-                    please open the port", instant);
+                    please connect to the port", instant);
                 socket.listen(4321).unwrap();
             }
 

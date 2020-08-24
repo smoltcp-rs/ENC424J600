@@ -13,7 +13,8 @@ use stm32f4xx_hal::{
     time::U32Ext,
     stm32::{CorePeripherals, Peripherals},
     delay::Delay,
-    spi::Spi
+    spi::Spi,
+    time::Hertz
 };
 use enc424j600;
 use enc424j600::EthController;
@@ -58,7 +59,7 @@ fn main() -> ! {
     let spi_eth_port = Spi::spi1(
         spi1, (spi1_sck, spi1_miso, spi1_mosi), 
         enc424j600::spi::interfaces::SPI_MODE,
-        enc424j600::spi::interfaces::SPI_CLOCK.into(),
+        Hertz(enc424j600::spi::interfaces::SPI_CLOCK_FREQ),
         clocks);
     let mut spi_eth = enc424j600::SpiEth::new(spi_eth_port, spi1_nss);
     // Init

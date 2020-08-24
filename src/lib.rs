@@ -1,12 +1,9 @@
 #![no_std]
 
-/// STM32F4xx-HAL specific implementations
 pub mod spi;
-use stm32f4xx_hal::{
-    hal::{
-        blocking::spi::Transfer,
-        digital::v2::OutputPin,
-    }
+use embedded_hal::{
+    blocking::spi::Transfer,
+    digital::v2::OutputPin,
 };
 
 pub mod rx;

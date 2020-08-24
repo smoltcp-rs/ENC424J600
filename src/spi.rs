@@ -1,25 +1,20 @@
 use core::fmt;
-use stm32f4xx_hal::{
-    hal::{
-        blocking::spi::Transfer,
-        digital::v2::OutputPin,
-    },
+use embedded_hal::{
+    blocking::spi::Transfer,
+    digital::v2::OutputPin,
     spi,
 };
 use crate::rx;
 
 pub mod interfaces {
-    use stm32f4xx_hal::{
-        spi,
-        time::MegaHertz
-    };
+    use embedded_hal::spi;
     /// Must use SPI mode cpol=0, cpha=0
     pub const SPI_MODE: spi::Mode = spi::Mode {
         polarity: spi::Polarity::IdleLow,
         phase: spi::Phase::CaptureOnFirstTransition,
     };
     /// Max freq = 14 MHz
-    pub const SPI_CLOCK: MegaHertz = MegaHertz(14);
+    pub const SPI_CLOCK_FREQ: u32 = 14_000_000;
 }
 
 pub mod opcodes {

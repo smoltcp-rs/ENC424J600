@@ -11,6 +11,7 @@ edition = "2018"
 [dependencies]
 volatile-register = "0.2"
 aligned = "0.3"
+embedded-hal = "0.2"
 stm32f4xx-hal = { version = "0.8" , optional = true }
 smoltcp = { version = "0.6.0", default-features = false, features = ["proto-ipv4", "proto-ipv6", "socket-icmp", "socket-udp", "socket-tcp", "log", "verbose", "ethernet"], optional = true }
 log = "0.4"
@@ -21,13 +22,13 @@ smoltcp-phy-all = [
     "smoltcp/socket-raw", "smoltcp/socket-udp", "smoltcp/socket-tcp",
     "smoltcp/proto-ipv4", "smoltcp/proto-ipv6"
 ]
+stm32f4 = ["stm32f4xx-hal"]
 stm32f407 = ["stm32f4xx-hal/stm32f407"]
 default = []
 
 [dev-dependencies]
 cortex-m = "0.5"
 cortex-m-rt = "0.6"
-embedded-hal = "0.2"
 panic-itm = "0.4"
 
 [[example]]

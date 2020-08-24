@@ -3,14 +3,16 @@
 
 ## General Instructions
 
-The ENC424J600 Ethernet controller module supports operation in one of the following interfaces: Serial Peripheral Interace (SPI), or Parallel Slave Port (PSP). This Rust library currently only supports the use of SPI for STM32F4xx microcontrollers.
+The ENC424J600 Ethernet controller module supports operation in one of the following interfaces: Serial Peripheral Interace (SPI), or Parallel Slave Port (PSP). This Rust library supports the use of SPI for all embedded systems compatible with the Rust [`embedded-hal`](https://crates.io/crates/embedded-hal) crate. 
 
 On ENC424J600, the **INTn/SPISEL** pin is multiplexed with an **interrupt function** (INTn) and an **interface selection function** (SPISEL). During power-up, to select SPI as the interface, INTn/SPISEL needs to latch a logic high for 1-10 us, driven outside of ENC424J600. After ENC424J600 has been initialsed, the same pin can be used to indicate occurrence of interrupt with a logic low, or idling with a logic high, driven by ENC424J600. Therefore, on the microcontroller side, the mode of driving the pin should be chosen by design: it should be **tri-stated** if interrupt is enabled, or **push-pull** otherwise.
+
+To help facilitate the user, we provide a [`nix-shell`](https://nixos.org/nixos/nix-pills/developing-with-nix-shell.html#idm140737320154096) environment and a set of Shell scripts to perform certain tasks, such as creating a ready-to-use [`tmux`](https://github.com/tmux/tmux/wiki) session for debugging an STM32 microcontroller, as well as compiling and running STM32-based examples.
 
 
 ### Instructions for STM32F407 Examples
 
-These examples assume that the **SPI1** port is connected to the Ethernet module, and the **GPIO PA1** pin is connected to its SPISEL pin. Since no interrupts are involved, GPIO PA1 is configured as a **push-pull** output to only initialise the controller. The program output is logged via ITM stimulus port 0.
+Currently, the provided examples are for STM32F4xx microcontrollers using the Rust [`stm32f4xx-hal`](https://crates.io/crates/stm32f4xx-hal) crate. These examples assume that the **SPI1** port is connected to the Ethernet module, and the **GPIO PA1** pin is connected to its SPISEL pin. Since no interrupts are involved, GPIO PA1 is configured as a **push-pull** output to only initialise the controller. The program output is logged via ITM stimulus port 0.
 
 
 ## Examples
@@ -27,18 +29,20 @@ This program demonstrates the Ethernet TX capability on an STM32F407 board. Once
 
 #### How-to
 
-1.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger. Then, on a console window, run OpenOCD and debug the example program:
+1.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger.
+
+2.  Create a `tmux` session for debugging:
     ```sh
     $ nix-shell
-    [nix-shell]$ run-openocd-f4x
+    [nix-shell]$ run-tmux-env
+    ```
+
+3.  When the `tmux` session is ready, on the top-right pane, compile and run the example program:
+    ```sh
     [nix-shell]$ tx_stm32f407
     ```
 
-2.  On a separate console window, run [`itmdump`](https://docs.rs/itm/) to observe the output:
-    ```sh
-    $ nix-shell
-    [nix-shell]$ run-itmdump-follow
-    ```
+4.  Observe the output on the left pane. If you wish to debug manually, run `run-help` to see the list of all available commands.
 
 #### Expected Output
 
@@ -70,24 +74,26 @@ This program demonstrates the TCP connectivity using **smoltcp** on an STM32F407
 
 #### How-to
 
-1.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger. Then, on a console window, run OpenOCD and debug the example program. Choose your own IPv4 address and prefix length:
+1.  Connect your STM32F407 device to the computer. Without changing any code, you may use an STLink V2 debugger.
+
+2.  Create a `tmux` session for debugging:
     ```sh
     $ nix-shell
-    [nix-shell]$ run-openocd-f4x
+    [nix-shell]$ run-tmux-env
+    ```
+
+3.  When the `tmux` session is ready, on the top-right pane, compile and run the example program. Choose your own IPv4 address and prefix length:
+    ```sh
     [nix-shell]$ tcp_stm32f407 <ip> <prefix>
     ```
 
-2.  On a separate console window, run [`itmdump`](https://docs.rs/itm/) to observe the output:
-    ```sh
-    $ nix-shell
-    [nix-shell]$ run-itmdump-follow
-    ```
-
-3.  To test the TCP ports, open another console window and use utilities like NetCat (`nc`):
+4.  To test the TCP ports, switch to the bottom-right pane (with <kbd>Ctrl</kbd>+<kbd>B</kbd>, followed by an arrow key) and use utilities like NetCat (`nc`):
     ```sh
     $ nc <ip> <port-number>
     ```
     Multiple instances of Netcat can run to use all the ports simultaneously. Use Ctrl+C to disconnect from the port manually (especially for the greeting port).
+
+5.  Observe the output on the left pane. If you wish to debug manually, run `run-help` to see the list of all available commands.
 
 #### Expected Output
 

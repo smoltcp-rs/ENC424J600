@@ -1,4 +1,3 @@
-tmux -2 list-windows -t enc424j600 | grep -q $USER && echo 'Your tmux session is still running! Attach by running:' && echo '$ tmux a -t enc424j600' && echo '$ tmux selectw -t' $USER && exit 1 || true
 tmux -2 new-session -d -s enc424j600 -n $USER
 #              |
 # 0:port-demux | 1:user

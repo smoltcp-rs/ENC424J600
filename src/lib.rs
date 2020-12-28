@@ -2,7 +2,10 @@
 
 pub mod spi;
 use embedded_hal::{
-    blocking::spi::Transfer,
+    blocking::{
+        spi::Transfer,
+        delay::DelayUs,
+    },
     digital::v2::OutputPin,
 };
 
@@ -13,7 +16,7 @@ pub mod tx;
 pub mod smoltcp_phy;
 
 pub trait EthController<'c> {
-    fn init_dev(&mut self) -> Result<(), EthControllerError>;
+    fn init_dev(&mut self, delay: &mut dyn DelayUs<u16>) -> Result<(), EthControllerError>;
     fn init_rxbuf(&mut self) -> Result<(), EthControllerError>;
     fn init_txbuf(&mut self) -> Result<(), EthControllerError>;
     fn receive_next(&mut self, is_poll: bool) -> Result<rx::RxPacket, EthControllerError>;
@@ -57,7 +60,7 @@ impl <SPI: Transfer<u8>,
 
 impl <'c, SPI: Transfer<u8>, 
       NSS: OutputPin> EthController<'c> for SpiEth<SPI, NSS> {
-    fn init_dev(&mut self) -> Result<(), EthControllerError> {
+    fn init_dev(&mut self, delay: &mut dyn DelayUs<u16>) -> Result<(), EthControllerError> {
         // Write 0x1234 to EUDAST
         self.spi_port.write_reg_16b(spi::addrs::EUDAST, 0x1234)?;
         // Verify that EUDAST is 0x1234
@@ -73,11 +76,15 @@ impl <'c, SPI: Transfer<u8>,
         // Set ETHRST (ECON2<4>) to 1
         let econ2 = self.spi_port.read_reg_8b(spi::addrs::ECON2)?;
         self.spi_port.write_reg_8b(spi::addrs::ECON2, 0x10 | (econ2 & 0b11101111))?;
+        // Wait for 25us
+        delay.delay_us(25_u16);
         // Verify that EUDAST is 0x0000
         eudast = self.spi_port.read_reg_16b(spi::addrs::EUDAST)?;
         if eudast != 0x0000 { 
             return Err(EthControllerError::GeneralError)
         }
+        // Wait for 256us
+        delay.delay_us(256_u16);
         Ok(())
     }
 

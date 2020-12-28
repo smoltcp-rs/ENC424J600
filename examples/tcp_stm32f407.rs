@@ -8,11 +8,13 @@ use cortex_m::iprintln;
 
 use cortex_m_rt::entry;
 use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::blocking::delay::DelayMs;
 use stm32f4xx_hal::{
     rcc::RccExt,
     gpio::GpioExt,
     time::U32Ext,
     stm32::{CorePeripherals, Peripherals},
+    delay::Delay,
     spi::Spi,
     time::Hertz
 };
@@ -36,7 +38,7 @@ use stm32f4xx_hal::{
     rcc::Clocks,
     time::MilliSeconds,
     timer::{Timer, Event as TimerEvent},
-    stm32::SYST,
+    stm32::SYST
 };
 /// Rate in Hz
 const TIMER_RATE: u32 = 20;
@@ -117,6 +119,7 @@ fn main() -> ! {
     // NIC100 / ENC424J600 Set-up
     let spi1 = dp.SPI1;
     let gpioa = dp.GPIOA.split();
+    let mut delay = Delay::new(cp.SYST, clocks);
     // Mapping: see Table 9, STM32F407ZG Manual
     let spi1_sck = gpioa.pa5.into_alternate_af5();
     let spi1_miso = gpioa.pa6.into_alternate_af5();
@@ -125,6 +128,7 @@ fn main() -> ! {
     // Map SPISEL: see Table 1, NIC100 Manual
     let mut spisel = gpioa.pa1.into_push_pull_output();
     spisel.set_high().unwrap();
+    delay.delay_ms(1_u32);
     spisel.set_low().unwrap();
     // Create SPI1 for HAL
     let spi_eth_port = Spi::spi1(
@@ -134,7 +138,7 @@ fn main() -> ! {
         clocks);
     let mut spi_eth = enc424j600::SpiEth::new(spi_eth_port, spi1_nss);
     // Init
-    match spi_eth.init_dev() {
+    match spi_eth.init_dev(&mut delay) {
         Ok(_) => {
             iprintln!(stim0, "Ethernet initialised.")
         }
@@ -145,7 +149,7 @@ fn main() -> ! {
 
     // Setup SysTick
     // Reference to stm32-eth:examples/ip.rs
-    timer_setup(cp.SYST, clocks);
+    timer_setup(delay.free(), clocks);
     iprintln!(stim0, "Timer initialised.");
 
     // Read MAC
@@ -165,7 +169,7 @@ fn main() -> ! {
     // examples/loopback.rs, examples/multicast.rs
     let device = smoltcp_phy::SmoltcpDevice::new(&mut spi_eth);
     let mut neighbor_cache_entries = [None; 16];
-    let mut neighbor_cache = NeighborCache::new(&mut neighbor_cache_entries[..]);
+    let neighbor_cache = NeighborCache::new(&mut neighbor_cache_entries[..]);
     let ip_addr = IpCidr::new(IpAddress::v4(
         arg_ip[0], arg_ip[1], arg_ip[2], arg_ip[3]), arg_ip_pref);
     let mut ip_addrs = [ip_addr];

@@ -63,7 +63,7 @@ fn main() -> ! {
         clocks);
     let mut spi_eth = enc424j600::SpiEth::new(spi_eth_port, spi1_nss);
     // Init
-    match spi_eth.init_dev() {
+    match spi_eth.init_dev(&mut delay) {
         Ok(_) => {
             iprintln!(stim0, "Ethernet initialised.")
         }

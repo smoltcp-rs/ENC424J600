@@ -129,7 +129,7 @@ impl <'c, SPI: Transfer<u8>,
         rx_packet.update_frame_length();
         // Read frame bytes
         let mut frame_buf = [0; rx::RAW_FRAME_LENGTH_MAX];
-        self.spi_port.read_rxdat(&mut frame_buf, rx_packet.get_frame_length() as u32)?;
+        self.spi_port.read_rxdat(&mut frame_buf, rx_packet.get_frame_length())?;
         rx_packet.copy_frame_from(&frame_buf[1..]);
         // Set ERXTAIL pointer to (next_addr - 2)
         if self.rx_buf.get_next_addr() > rx::ERXST_DEFAULT {
@@ -152,7 +152,7 @@ impl <'c, SPI: Transfer<u8>,
         // 1-byte Opcode is included 
         let mut txdat_buf: [u8; tx::RAW_FRAME_LENGTH_MAX + 1] = [0; tx::RAW_FRAME_LENGTH_MAX + 1];
         packet.write_frame_to(&mut txdat_buf[1..]);
-        self.spi_port.write_txdat(&mut txdat_buf, packet.get_frame_length() as u32)?;
+        self.spi_port.write_txdat(&mut txdat_buf, packet.get_frame_length())?;
         // Set ETXST to packet start address
         self.spi_port.write_reg_16b(spi::addrs::ETXST, self.tx_buf.get_next_addr())?;
         // Set ETXLEN to packet length

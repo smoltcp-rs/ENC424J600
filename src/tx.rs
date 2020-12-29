@@ -36,7 +36,7 @@ impl TxBuffer {
     pub fn get_next_addr(& self) -> u16{
         self.next_addr
     }
-    
+
     pub fn set_tail_addr(&mut self, addr: u16) {
         self.tail_addr = addr;
     }

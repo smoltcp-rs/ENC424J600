@@ -4,7 +4,7 @@
 use core::env;
 
 extern crate panic_itm;
-use cortex_m::iprintln;
+use cortex_m::{iprintln, iprint};
 
 use cortex_m_rt::entry;
 use embedded_hal::digital::v2::OutputPin;
@@ -90,7 +90,7 @@ fn main() -> ! {
     let mut itm = cp.ITM;
     let stim0 = &mut itm.stim[0];
 
-    iprintln!(stim0, 
+    iprintln!(stim0,
         "Eth TCP Server on STM32-F407 via NIC100/ENC424J600");
 
     // Get IP address from args
@@ -132,34 +132,38 @@ fn main() -> ! {
     spisel.set_low().unwrap();
     // Create SPI1 for HAL
     let spi_eth_port = Spi::spi1(
-        spi1, (spi1_sck, spi1_miso, spi1_mosi), 
-        enc424j600::spi::interfaces::SPI_MODE, 
+        spi1, (spi1_sck, spi1_miso, spi1_mosi),
+        enc424j600::spi::interfaces::SPI_MODE,
         Hertz(enc424j600::spi::interfaces::SPI_CLOCK_FREQ),
         clocks);
     let mut spi_eth = enc424j600::SpiEth::new(spi_eth_port, spi1_nss);
     // Init
     match spi_eth.init_dev(&mut delay) {
         Ok(_) => {
-            iprintln!(stim0, "Ethernet initialised.")
+            iprintln!(stim0, "Ethernet initialized")
         }
         Err(_) => {
-            panic!("Ethernet initialisation Failed!")
+            panic!("Ethernet initialization failed!")
         }
     }
 
     // Setup SysTick
     // Reference to stm32-eth:examples/ip.rs
     timer_setup(delay.free(), clocks);
-    iprintln!(stim0, "Timer initialised.");
+    iprintln!(stim0, "Timer initialized");
 
     // Read MAC
     let mut eth_mac_addr: [u8; 6] = [0; 6];
     spi_eth.read_from_mac(&mut eth_mac_addr);
-    iprintln!(stim0, 
-        "MAC Address = {:02x}-{:02x}-{:02x}-{:02x}-{:02x}-{:02x}", 
-        eth_mac_addr[0], eth_mac_addr[1], 
-        eth_mac_addr[2], eth_mac_addr[3], 
-        eth_mac_addr[4], eth_mac_addr[5]);
+    for i in 0..6 {
+        let byte = eth_mac_addr[i];
+        match i {
+            0 => iprint!(stim0, "MAC Address = {:02x}-", byte),
+            1..=4 => iprint!(stim0, "{:02x}-", byte),
+            5 => iprint!(stim0, "{:02x}\n", byte),
+            _ => ()
+        };
+    }
 
     // Init Rx/Tx buffers
     spi_eth.init_rxbuf();
@@ -199,10 +203,9 @@ fn main() -> ! {
     let mut socket_set = SocketSet::new(&mut socket_set_entries[..]);
     let echo_handle = socket_set.add(echo_socket);
     let greet_handle = socket_set.add(greet_socket);
-    iprintln!(stim0, 
-        "TCP sockets will listen at {}", ip_addr);
+    iprintln!(stim0, "TCP sockets will listen at {}", ip_addr);
 
-    // Copied / modified from: 
+    // Copied / modified from:
     // smoltcp:examples/loopback.rs, examples/server.rs;
     // stm32-eth:examples/ip.rs,
     // git.m-labs.hk/M-Labs/tnetplug
@@ -220,13 +223,13 @@ fn main() -> ! {
         {
             let mut socket = socket_set.get::<TcpSocket>(echo_handle);
             if !socket.is_open() {
-                iprintln!(stim0, 
+                iprintln!(stim0,
                     "[{}] Listening to port 1234 for echoing, time-out in 10s", instant);
                 socket.listen(1234).unwrap();
                 socket.set_timeout(Some(Duration::from_millis(10000)));
             }
             if socket.can_recv() {
-                iprintln!(stim0, 
+                iprintln!(stim0,
                 "[{}] Received packet: {:?}", instant, socket.recv(|buffer| {
                     (buffer.len(), str::from_utf8(buffer).unwrap())
                 }));
@@ -236,7 +239,7 @@ fn main() -> ! {
         {
             let mut socket = socket_set.get::<TcpSocket>(greet_handle);
             if !socket.is_open() {
-                iprintln!(stim0, 
+                iprintln!(stim0,
                     "[{}] Listening to port 4321 for greeting, \
                     please connect to the port", instant);
                 socket.listen(4321).unwrap();
@@ -245,13 +248,10 @@ fn main() -> ! {
             if socket.can_send() {
                 let greeting = "Welcome to the server demo for STM32-F407!";
                 write!(socket, "{}\n", greeting).unwrap();
-                iprintln!(stim0, 
+                iprintln!(stim0,
                     "[{}] Greeting sent, socket closed", instant);
                 socket.close();
             }
         }
-        
     }
-
-    unreachable!()
 }

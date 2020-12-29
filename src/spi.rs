@@ -51,7 +51,7 @@ pub mod addrs {
 
 /// Struct for SPI I/O interface on ENC424J600
 /// Note: stm32f4xx_hal::spi's pins include: SCK, MISO, MOSI
-pub struct SpiPort<SPI: Transfer<u8>, 
+pub struct SpiPort<SPI: Transfer<u8>,
                    NSS: OutputPin> {
     spi: SPI,
     nss: NSS,
@@ -62,14 +62,14 @@ pub enum SpiPortError {
 }
 
 #[allow(unused_must_use)]
-impl <SPI: Transfer<u8>, 
+impl <SPI: Transfer<u8>,
       NSS: OutputPin> SpiPort<SPI, NSS> {
     // TODO: return as Result()
     pub fn new(spi: SPI, mut nss: NSS) -> Self {
         nss.set_high();
-        
+
         SpiPort {
-            spi, 
+            spi,
             nss
         }
     }
@@ -88,7 +88,7 @@ impl <SPI: Transfer<u8>,
     }
 
     // Currently requires manual slicing (buf[1..]) for the data read back
-    pub fn read_rxdat<'a>(&mut self, buf: &'a mut [u8], data_length: usize) 
+    pub fn read_rxdat<'a>(&mut self, buf: &'a mut [u8], data_length: usize)
                          -> Result<(), SpiPortError> {
         let r_valid = self.r_n(buf, opcodes::RERXDATA, data_length)?;
         Ok(r_valid)
@@ -96,7 +96,7 @@ impl <SPI: Transfer<u8>,
 
     // Currenly requires actual data to be stored in buf[1..] instead of buf[0..]
     // TODO: Maybe better naming?
-    pub fn write_txdat<'a>(&mut self, buf: &'a mut [u8], data_length: usize) 
+    pub fn write_txdat<'a>(&mut self, buf: &'a mut [u8], data_length: usize)
                           -> Result<(), SpiPortError> {
         let w_valid = self.w_n(buf, opcodes::WEGPDATA, data_length)?;
         Ok(w_valid)
@@ -118,7 +118,7 @@ impl <SPI: Transfer<u8>,
     // TODO: Generalise transfer functions
     // TODO: (Make data read/write as reference to array)
     // Currently requires 1-byte addr, read/write data is only 1-byte
-    fn rw_addr_u8(&mut self, opcode: u8, addr: u8, data: u8) 
+    fn rw_addr_u8(&mut self, opcode: u8, addr: u8, data: u8)
                  -> Result<u8, SpiPortError> {
         // Enable chip select
         self.nss.set_low();
@@ -144,11 +144,11 @@ impl <SPI: Transfer<u8>,
     }
 
     // TODO: Generalise transfer functions
-    // Currently does NOT accept addr, read data is N-byte long 
+    // Currently does NOT accept addr, read data is N-byte long
     // Returns a reference to the data returned
     // Note: buf must be at least (data_length + 1)-byte long
     // TODO: Check and raise error for array size < (data_length + 1)
-    fn r_n<'a>(&mut self, buf: &'a mut [u8], opcode: u8, data_length: usize) 
+    fn r_n<'a>(&mut self, buf: &'a mut [u8], opcode: u8, data_length: usize)
               -> Result<(), SpiPortError> {
         // Enable chip select
         self.nss.set_low();
@@ -171,7 +171,7 @@ impl <SPI: Transfer<u8>,
 
     // Note: buf[0] is currently reserved for opcode to overwrite
     // TODO: Actual data should start from buf[0], not buf[1]
-    fn w_n<'a>(&mut self, buf: &'a mut [u8], opcode: u8, data_length: usize) 
+    fn w_n<'a>(&mut self, buf: &'a mut [u8], opcode: u8, data_length: usize)
               -> Result<(), SpiPortError> {
         // Enable chip select
         self.nss.set_low();

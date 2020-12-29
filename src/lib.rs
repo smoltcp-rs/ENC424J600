@@ -40,14 +40,14 @@ impl From<spi::SpiPortError> for EthControllerError {
 }
 
 /// Ethernet controller using SPI interface
-pub struct SpiEth<SPI: Transfer<u8>, 
+pub struct SpiEth<SPI: Transfer<u8>,
                   NSS: OutputPin> {
     spi_port: spi::SpiPort<SPI, NSS>,
     rx_buf: rx::RxBuffer,
     tx_buf: tx::TxBuffer
 }
 
-impl <SPI: Transfer<u8>, 
+impl <SPI: Transfer<u8>,
       NSS: OutputPin> SpiEth<SPI, NSS> {
     pub fn new(spi: SPI, nss: NSS) -> Self {
         SpiEth {
@@ -58,14 +58,14 @@ impl <SPI: Transfer<u8>,
     }
 }
 
-impl <'c, SPI: Transfer<u8>, 
+impl <'c, SPI: Transfer<u8>,
       NSS: OutputPin> EthController<'c> for SpiEth<SPI, NSS> {
     fn init_dev(&mut self, delay: &mut dyn DelayUs<u16>) -> Result<(), EthControllerError> {
         // Write 0x1234 to EUDAST
         self.spi_port.write_reg_16b(spi::addrs::EUDAST, 0x1234)?;
         // Verify that EUDAST is 0x1234
         let mut eudast = self.spi_port.read_reg_16b(spi::addrs::EUDAST)?;
-        if eudast != 0x1234 { 
+        if eudast != 0x1234 {
             return Err(EthControllerError::GeneralError)
         }
         // Poll CLKRDY (ESTAT<12>) to check if it is set
@@ -80,7 +80,7 @@ impl <'c, SPI: Transfer<u8>,
         delay.delay_us(25_u16);
         // Verify that EUDAST is 0x0000
         eudast = self.spi_port.read_reg_16b(spi::addrs::EUDAST)?;
-        if eudast != 0x0000 { 
+        if eudast != 0x0000 {
             return Err(EthControllerError::GeneralError)
         }
         // Wait for 256us
@@ -110,7 +110,7 @@ impl <'c, SPI: Transfer<u8>,
     /// Receive the next packet and return it
     /// Set is_poll to true for returning until PKTIF is set;
     /// Set is_poll to false for returning Err when PKTIF is not set
-    fn receive_next(&mut self, is_poll: bool) -> Result<rx::RxPacket, EthControllerError> { 
+    fn receive_next(&mut self, is_poll: bool) -> Result<rx::RxPacket, EthControllerError> {
         // Poll PKTIF (EIR<4>) to check if it is set
         loop {
             let eir = self.spi_port.read_reg_16b(spi::addrs::EIR)?;
@@ -156,7 +156,7 @@ impl <'c, SPI: Transfer<u8>,
         // Set EGPWRPT pointer to next_addr
         self.spi_port.write_reg_16b(spi::addrs::EGPWRPT, self.tx_buf.get_next_addr())?;
         // Copy packet data to SRAM Buffer
-        // 1-byte Opcode is included 
+        // 1-byte Opcode is included
         let mut txdat_buf: [u8; tx::RAW_FRAME_LENGTH_MAX + 1] = [0; tx::RAW_FRAME_LENGTH_MAX + 1];
         packet.write_frame_to(&mut txdat_buf[1..]);
         self.spi_port.write_txdat(&mut txdat_buf, packet.get_frame_length())?;
@@ -175,15 +175,15 @@ impl <'c, SPI: Transfer<u8>,
         // TODO: Read ETXSTAT to understand Ethernet transmission status
         // (See: Register 9-2, ENC424J600 Data Sheet)
         // Update TX buffer start address
-        self.tx_buf.set_next_addr((self.tx_buf.get_next_addr() + packet.get_frame_length() as u16) % 
+        self.tx_buf.set_next_addr((self.tx_buf.get_next_addr() + packet.get_frame_length() as u16) %
             tx::GPBUFEN_DEFAULT);
         Ok(())
     }
 
     /// Set controller to Promiscuous Mode
     fn set_promiscuous(&mut self) -> Result<(), EthControllerError> {
-        // From Section 10.12, ENC424J600 Data Sheet: 
-        // "To accept all incoming frames regardless of content (Promiscuous mode), 
+        // From Section 10.12, ENC424J600 Data Sheet:
+        // "To accept all incoming frames regardless of content (Promiscuous mode),
         // set the CRCEN, RUNTEN, UCEN, NOTMEEN and MCEN bits."
         let erxfcon_lo = self.spi_port.read_reg_8b(spi::addrs::ERXFCON)?;
         self.spi_port.write_reg_8b(spi::addrs::ERXFCON, 0b0101_1110 | (erxfcon_lo & 0b1010_0001))?;

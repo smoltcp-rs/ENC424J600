@@ -2,7 +2,7 @@
 #![no_main]
 
 extern crate panic_itm;
-use cortex_m::iprintln;
+use cortex_m::{iprintln, iprint};
 
 use cortex_m_rt::entry;
 use embedded_hal::digital::v2::OutputPin;
@@ -39,7 +39,7 @@ fn main() -> ! {
     let mut itm = cp.ITM;
     let stim0 = &mut itm.stim[0];
 
-    iprintln!(stim0, 
+    iprintln!(stim0,
         "Eth TX Pinging on STM32-F407 via NIC100/ENC424J600");
 
     // NIC100 / ENC424J600 Set-up
@@ -57,7 +57,7 @@ fn main() -> ! {
     spisel.set_low().unwrap();
     // Create SPI1 for HAL
     let spi_eth_port = Spi::spi1(
-        spi1, (spi1_sck, spi1_miso, spi1_mosi), 
+        spi1, (spi1_sck, spi1_miso, spi1_mosi),
         enc424j600::spi::interfaces::SPI_MODE,
         Hertz(enc424j600::spi::interfaces::SPI_CLOCK_FREQ),
         clocks);
@@ -65,25 +65,25 @@ fn main() -> ! {
     // Init
     match spi_eth.init_dev(&mut delay) {
         Ok(_) => {
-            iprintln!(stim0, "Ethernet initialised.")
+            iprintln!(stim0, "Ethernet initialized")
         }
         Err(_) => {
-            panic!("Ethernet initialisation Failed!")
+            panic!("Ethernet initialization failed!")
         }
     }
 
     // Read MAC
     let mut eth_mac_addr: [u8; 6] = [0; 6];
     spi_eth.read_from_mac(&mut eth_mac_addr);
-    iprintln!(stim0, 
-        "MAC Address = {:02x}-{:02x}-{:02x}-{:02x}-{:02x}-{:02x}", 
-        eth_mac_addr[0], eth_mac_addr[1], 
-        eth_mac_addr[2], eth_mac_addr[3], 
-        eth_mac_addr[4], eth_mac_addr[5]);
-    // Set to promiscuous mode
-    spi_eth.set_promiscuous();
-    iprintln!(stim0, 
-        "Promiscuous Mode ON");
+    for i in 0..6 {
+        let byte = eth_mac_addr[i];
+        match i {
+            0 => iprint!(stim0, "MAC Address = {:02x}-", byte),
+            1..=4 => iprint!(stim0, "{:02x}-", byte),
+            5 => iprint!(stim0, "{:02x}\n", byte),
+            _ => ()
+        };
+    }
 
     // Init Rx/Tx buffers
     spi_eth.init_rxbuf();
@@ -102,26 +102,23 @@ fn main() -> ! {
     loop {
         let mut eth_tx_packet = enc424j600::tx::TxPacket::new();
         eth_tx_packet.update_frame(&eth_tx_dat, 64);
-        iprintln!(stim0, 
-            "Sending packet (len={:}): \
-            dest={:02x}-{:02x}-{:02x}-{:02x}-{:02x}-{:02x} \
-            src={:02x}-{:02x}-{:02x}-{:02x}-{:02x}-{:02x} \
-            data={:02x}{:02x}{:02x}{:02x} {:02x}{:02x}{:02x}{:02x} ...",
-            eth_tx_packet.get_frame_length(),
-            eth_tx_packet.get_frame_byte(0), eth_tx_packet.get_frame_byte(1), eth_tx_packet.get_frame_byte(2), 
-            eth_tx_packet.get_frame_byte(3), eth_tx_packet.get_frame_byte(4), eth_tx_packet.get_frame_byte(5),
-            eth_tx_packet.get_frame_byte(6), eth_tx_packet.get_frame_byte(7), eth_tx_packet.get_frame_byte(8), 
-            eth_tx_packet.get_frame_byte(9), eth_tx_packet.get_frame_byte(10), eth_tx_packet.get_frame_byte(11),
-            eth_tx_packet.get_frame_byte(12), eth_tx_packet.get_frame_byte(13),
-            eth_tx_packet.get_frame_byte(14), eth_tx_packet.get_frame_byte(15),
-            eth_tx_packet.get_frame_byte(16), eth_tx_packet.get_frame_byte(17),
-            eth_tx_packet.get_frame_byte(18), eth_tx_packet.get_frame_byte(19)
-        );
+        iprint!(stim0,
+            "Sending packet (len={:}): ", eth_tx_packet.get_frame_length());
+        for i in 0..20 {
+            let byte = eth_tx_packet.get_frame_byte(i);
+            match i {
+                0 => iprint!(stim0, "dest={:02x}-", byte),
+                6 => iprint!(stim0, "src={:02x}-", byte),
+                12 => iprint!(stim0, "data={:02x}", byte),
+                1..=4 | 7..=10 => iprint!(stim0, "{:02x}-", byte),
+                13..=14 | 16..=18 => iprint!(stim0, "{:02x}", byte),
+                5 | 11 | 15 => iprint!(stim0, "{:02x} ", byte),
+                19 => iprint!(stim0, "{:02x} ...\n", byte),
+                _ => ()
+            };
+        }
         spi_eth.send_raw_packet(&eth_tx_packet);
-        iprintln!(stim0, 
-            "Packet sent");
+        iprintln!(stim0, "Packet sent");
         delay.delay_ms(100_u32);
     }
-
-    unreachable!()
 }

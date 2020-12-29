@@ -22,9 +22,8 @@ let
     echo "[Examples]"
     echo "  tx_stm32f407"
     echo "        - Run tx_stm32f407 example."
-    echo "  tcp_stm32f407 <ip> <pref>"
-    echo "        - Run tcp_stm32f407 example with the IPv4"
-    echo "          address <ip> (dot-separated) and prefix length <pref>."
+    echo "  tcp_stm32f407"
+    echo "        - Run tcp_stm32f407 example."
     echo ""
     echo "[Workspace]"
     echo "  run-tmux-env"
@@ -98,14 +97,6 @@ let
     cargo run --release --example=tx_stm32f407 --features=stm32f407
   '';
   exTcpStm32f407 = writeShellScriptBin "tcp_stm32f407" ''
-    if [[ $1 = "" ]] || [[ $2 = "" ]]
-    then
-      echo "Arguments <ip> or <pref> are missing."
-      exit
-    fi
-    touch ./examples/tcp_stm32f407.rs
-    export ENC424J600_TCP_IP=$1
-    export ENC424J600_TCP_PREF=$2
     cargo run --release --example=tcp_stm32f407 --features=stm32f407,smoltcp-phy-all
   '';
 in

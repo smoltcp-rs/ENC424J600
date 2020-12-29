@@ -82,9 +82,9 @@ This program demonstrates the TCP connectivity using **smoltcp** on an STM32F407
     [nix-shell]$ run-tmux-env
     ```
 
-3.  When the `tmux` session is ready, on the top-right pane, compile and run the example program. Choose your own IPv4 address and prefix length:
+3.  When the `tmux` session is ready, on the top-right pane, compile and run the example program. The default IP address is 192.168.1.77, which can be edited in the source file `examples/tcp_stm32f407.rs`.
     ```sh
-    [nix-shell]$ tcp_stm32f407 <ip> <prefix>
+    [nix-shell]$ tcp_stm32f407
     ```
 
 4.  To test the TCP ports, switch to the bottom-right pane (with <kbd>Ctrl</kbd>+<kbd>B</kbd>, followed by an arrow key) and use utilities like NetCat (`nc`):
@@ -97,7 +97,7 @@ This program demonstrates the TCP connectivity using **smoltcp** on an STM32F407
 
 #### Expected Output
 
-(Note: the IP address, MAC address and timestamps shown below are examples only.)
+(Note: the MAC address and timestamps shown below are examples only.)
 
 ITM output at the initial state:
 ```

@@ -94,10 +94,10 @@ let
 
   # Examples
   exTxStm32f407 = writeShellScriptBin "tx_stm32f407" ''
-    cargo run --release --example=tx_stm32f407 --features=stm32f407
+    cargo run --release --example=tx_stm32f407 --features=tx_stm32f407
   '';
   exTcpStm32f407 = writeShellScriptBin "tcp_stm32f407" ''
-    cargo run --release --example=tcp_stm32f407 --features=stm32f407,smoltcp-phy-all
+    cargo run --release --example=tcp_stm32f407 --features=tcp_stm32f407
   '';
 in
 stdenv.mkDerivation {

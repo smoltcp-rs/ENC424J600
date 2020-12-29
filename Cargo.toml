@@ -14,8 +14,8 @@ aligned = "0.3"
 embedded-hal = "0.2"
 stm32f4xx-hal = { version = "0.8" , optional = true }
 smoltcp = { version = "0.6.0", default-features = false, features = ["proto-ipv4", "proto-ipv6", "socket-icmp", "socket-udp", "socket-tcp", "log", "verbose", "ethernet"], optional = true }
-log = "0.4"
-cortex-m-rtic = "0.5.3"
+log = { version = "0.4", optional = true }
+cortex-m-rtic = { version = "0.5.3", optional = true }
 
 [features]
 smoltcp-phy = ["smoltcp"]
@@ -25,6 +25,8 @@ smoltcp-phy-all = [
 ]
 stm32f4 = ["stm32f4xx-hal"]
 stm32f407 = ["stm32f4xx-hal/stm32f407"]
+tx_stm32f407 = ["stm32f407", "log", "cortex-m-rtic"]
+tcp_stm32f407 = ["stm32f407", "smoltcp-phy-all", "smoltcp/log", "log", "cortex-m-rtic"]
 default = []
 
 [dev-dependencies]
@@ -34,11 +36,11 @@ panic-itm = "0.4"
 
 [[example]]
 name = "tx_stm32f407"
-required-features = ["stm32f407"]
+required-features = ["tx_stm32f407"]
 
 [[example]]
 name = "tcp_stm32f407"
-required-features = ["stm32f407", "smoltcp-phy-all", "smoltcp/log"]
+required-features = ["tcp_stm32f407"]
 
 [profile.release]
 codegen-units = 1

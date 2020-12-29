@@ -15,8 +15,8 @@ pub mod tx;
 #[cfg(feature="smoltcp")]
 pub mod smoltcp_phy;
 
-pub trait EthController<'c> {
-    fn init_dev(&mut self, delay: &mut dyn DelayUs<u16>) -> Result<(), EthControllerError>;
+pub trait EthController {
+    fn init_dev(&mut self, delay: &mut impl DelayUs<u16>) -> Result<(), EthControllerError>;
     fn init_rxbuf(&mut self) -> Result<(), EthControllerError>;
     fn init_txbuf(&mut self) -> Result<(), EthControllerError>;
     fn receive_next(&mut self, is_poll: bool) -> Result<rx::RxPacket, EthControllerError>;
@@ -58,9 +58,9 @@ impl <SPI: Transfer<u8>,
     }
 }
 
-impl <'c, SPI: Transfer<u8>,
-      NSS: OutputPin> EthController<'c> for SpiEth<SPI, NSS> {
-    fn init_dev(&mut self, delay: &mut dyn DelayUs<u16>) -> Result<(), EthControllerError> {
+impl <SPI: Transfer<u8>,
+      NSS: OutputPin> EthController for SpiEth<SPI, NSS> {
+    fn init_dev(&mut self, delay: &mut impl DelayUs<u16>) -> Result<(), EthControllerError> {
         // Write 0x1234 to EUDAST
         self.spi_port.write_reg_16b(spi::addrs::EUDAST, 0x1234)?;
         // Verify that EUDAST is 0x1234

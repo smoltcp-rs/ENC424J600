@@ -171,7 +171,7 @@ fn main() -> ! {
 
     // Copied / modified from smoltcp:
     // examples/loopback.rs, examples/multicast.rs
-    let device = smoltcp_phy::SmoltcpDevice::new(&mut spi_eth);
+    let device = smoltcp_phy::SmoltcpDevice::new(spi_eth);
     let mut neighbor_cache_entries = [None; 16];
     let neighbor_cache = NeighborCache::new(&mut neighbor_cache_entries[..]);
     let ip_addr = IpCidr::new(IpAddress::v4(

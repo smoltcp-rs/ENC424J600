@@ -1,45 +1,40 @@
 use crate::{
     EthController, rx, tx
 };
-use core::intrinsics::transmute;
+use core::cell;
 use smoltcp::{
     phy::{Device, DeviceCapabilities, RxToken, TxToken},
     time::Instant,
     Error
 };
 
-pub struct SmoltcpDevice<'c> {
-    eth_controller: &'c mut dyn EthController<'c>,
+pub struct SmoltcpDevice<EC: EthController> {
+    pub eth_controller: cell::RefCell<EC>,
     rx_packet_buf: [u8; rx::RAW_FRAME_LENGTH_MAX],
     tx_packet_buf: [u8; tx::RAW_FRAME_LENGTH_MAX]
 }
 
-impl<'c> SmoltcpDevice<'c> {
-    pub fn new(eth_controller: &'c mut dyn EthController<'c>) -> Self {
+impl<EC: EthController> SmoltcpDevice<EC> {
+    pub fn new(eth_controller: EC) -> Self {
         SmoltcpDevice {
-            eth_controller,
+            eth_controller: cell::RefCell::new(eth_controller),
             rx_packet_buf: [0; rx::RAW_FRAME_LENGTH_MAX],
             tx_packet_buf: [0; tx::RAW_FRAME_LENGTH_MAX]
         }
     }
 }
 
-impl<'a, 'c> Device<'a> for SmoltcpDevice<'c> {
+impl<'a, EC: 'a + EthController> Device<'a> for SmoltcpDevice<EC> {
     type RxToken = EthRxToken<'a>;
-    type TxToken = EthTxToken<'a>;
+    type TxToken = EthTxToken<'a, EC>;
 
     fn capabilities(&self) -> DeviceCapabilities {
         DeviceCapabilities::default()
     }
 
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
-        // Extend self lifetime from 'c to 'a for tokens' access to EthController
-        let self_trans = unsafe {
-            transmute::<&mut SmoltcpDevice<'c>, &mut SmoltcpDevice<'a>>(&mut *self)
-        };
-        // Make self_a point to *self that has a lifetime of 'a (extended)
-        let self_a = self_trans as *mut SmoltcpDevice<'a>;
-        match self_trans.eth_controller.receive_next(false) {
+        let self_p = (&mut *self) as *mut SmoltcpDevice<EC>;
+        match self.eth_controller.borrow_mut().receive_next(false) {
             Ok(rx_packet) => {
                 // Write received packet to RX packet buffer
                 rx_packet.write_frame_to(&mut self.rx_packet_buf);
@@ -51,7 +46,7 @@ impl<'a, 'c> Device<'a> for SmoltcpDevice<'c> {
                 // Construct a blank TxToken
                 let tx_token = EthTxToken {
                     buf: &mut self.tx_packet_buf,
-                    dev: self_a
+                    dev: self_p
                 };
                 Some((rx_token, tx_token))
             },
@@ -60,16 +55,11 @@ impl<'a, 'c> Device<'a> for SmoltcpDevice<'c> {
     }
 
     fn transmit(&'a mut self) -> Option<Self::TxToken> {
-        // Extend self lifetime from 'c to 'a for TxToken's access to EthController
-        let self_trans = unsafe {
-            transmute::<&mut SmoltcpDevice<'c>, &mut SmoltcpDevice<'a>>(&mut *self)
-        };
-        // Make self_a point to *self that has a lifetime of 'a (extended)
-        let self_a = self_trans as *mut SmoltcpDevice<'a>;
+        let self_p = (&mut *self) as *mut SmoltcpDevice<EC>;
         // Construct a blank TxToken
         let tx_token = EthTxToken {
             buf: &mut self.tx_packet_buf,
-            dev: self_a
+            dev: self_p
         };
         Some(tx_token)
     }
@@ -89,12 +79,12 @@ impl<'a> RxToken for EthRxToken<'a> {
     }
 }
 
-pub struct EthTxToken<'a> {
+pub struct EthTxToken<'a, EC: EthController> {
     buf: &'a mut [u8],
-    dev: *mut SmoltcpDevice<'a>
+    dev: *mut SmoltcpDevice<EC>
 }
 
-impl<'a> TxToken for EthTxToken<'a> {
+impl<'a, EC: 'a + EthController> TxToken for EthTxToken<'a, EC> {
     fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> Result<R, Error>
     where
         F: FnOnce(&mut [u8]) -> Result<R, Error>,
@@ -108,7 +98,7 @@ impl<'a> TxToken for EthTxToken<'a> {
         let eth_controller = unsafe {
             &mut (*self.dev).eth_controller
         };
-        match eth_controller.send_raw_packet(&tx_packet) {
+        match eth_controller.borrow_mut().send_raw_packet(&tx_packet) {
             Ok(_) => { result },
             Err(_) => Err(Error::Exhausted)
         }

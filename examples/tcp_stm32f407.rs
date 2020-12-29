@@ -28,7 +28,47 @@ use smoltcp::socket::{SocketSet, TcpSocket, TcpSocketBuffer};
 use core::str;
 use core::fmt::Write;
 
-use rtic::cyccnt::Instant;
+/// Timer
+use core::cell::RefCell;
+use cortex_m::interrupt::Mutex;
+use cortex_m_rt::exception;
+use stm32f4xx_hal::{
+    rcc::Clocks,
+    time::MilliSeconds,
+    timer::{Timer, Event as TimerEvent},
+    stm32::SYST
+};
+use smoltcp::time::Instant;
+/// Rate in Hz
+const TIMER_RATE: u32 = 20;
+/// Interval duration in milliseconds
+const TIMER_DELTA: u32 = 1000 / TIMER_RATE;
+/// Elapsed time in milliseconds
+static TIMER_MS: Mutex<RefCell<u32>> = Mutex::new(RefCell::new(0));
+
+/// Setup SysTick exception
+fn timer_setup(syst: SYST, clocks: Clocks) {
+    let mut timer = Timer::syst(syst, TIMER_RATE.hz(), clocks);
+    timer.listen(TimerEvent::TimeOut);
+}
+
+/// SysTick exception (Timer)
+#[exception]
+fn SysTick() {
+    cortex_m::interrupt::free(|cs| {
+        *TIMER_MS.borrow(cs)
+            .borrow_mut() += TIMER_DELTA;
+    });
+}
+
+/// Obtain current time in milliseconds
+pub fn timer_now() -> MilliSeconds {
+    let ms = cortex_m::interrupt::free(|cs| {
+        *TIMER_MS.borrow(cs)
+            .borrow()
+    });
+    ms.ms()
+}
 
 ///
 use stm32f4xx_hal::{
@@ -163,6 +203,11 @@ const APP: () = {
             eth_iface
         };
 
+        // Setup SysTick after releasing SYST from Delay
+        // Reference to stm32-eth:examples/ip.rs
+        timer_setup(delay.free(), clocks);
+        iprintln!(stim0, "Timer initialized");
+
         init::LateResources {
             eth_iface,
             itm
@@ -204,18 +249,10 @@ const APP: () = {
         // smoltcp:examples/loopback.rs, examples/server.rs;
         // stm32-eth:examples/ip.rs,
         // git.m-labs.hk/M-Labs/tnetplug
-        let mut time = 0u32;
-        let mut next_ms = Instant::now();
-        use rtic::cyccnt::U32Ext;
-        next_ms += 168_000_u32.cycles();
         loop {
             // Poll
-            let tick = Instant::now() > next_ms;
-            if tick {
-                next_ms += 168_000_u32.cycles();
-                time += 1;
-            }
-            let instant = smoltcp::time::Instant::from_millis(time as i64);
+            let now = timer_now().0;
+            let instant = Instant::from_millis(now as i64);
             match iface.poll(&mut socket_set, instant) {
                 Ok(_) => {
                 },

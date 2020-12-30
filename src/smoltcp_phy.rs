@@ -1,5 +1,5 @@
 use crate::{
-    EthController, rx, tx
+    EthController, tx, RAW_FRAME_LENGTH_MAX
 };
 use core::intrinsics::transmute;
 use smoltcp::{
@@ -10,16 +10,16 @@ use smoltcp::{
 
 pub struct SmoltcpDevice<'c> {
     eth_controller: &'c mut dyn EthController<'c>,
-    rx_packet_buf: [u8; rx::RAW_FRAME_LENGTH_MAX],
-    tx_packet_buf: [u8; tx::RAW_FRAME_LENGTH_MAX]
+    rx_packet_buf: [u8; RAW_FRAME_LENGTH_MAX],
+    tx_packet_buf: [u8; RAW_FRAME_LENGTH_MAX]
 }
 
 impl<'c> SmoltcpDevice<'c> {
     pub fn new(eth_controller: &'c mut dyn EthController<'c>) -> Self {
         SmoltcpDevice {
             eth_controller,
-            rx_packet_buf: [0; rx::RAW_FRAME_LENGTH_MAX],
-            tx_packet_buf: [0; tx::RAW_FRAME_LENGTH_MAX]
+            rx_packet_buf: [0; RAW_FRAME_LENGTH_MAX],
+            tx_packet_buf: [0; RAW_FRAME_LENGTH_MAX]
         }
     }
 }
@@ -29,7 +29,9 @@ impl<'a, 'c> Device<'a> for SmoltcpDevice<'c> {
     type TxToken = EthTxToken<'a>;
 
     fn capabilities(&self) -> DeviceCapabilities {
-        DeviceCapabilities::default()
+        let mut caps = DeviceCapabilities::default();
+        caps.max_transmission_unit = RAW_FRAME_LENGTH_MAX;
+        caps
     }
 
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {

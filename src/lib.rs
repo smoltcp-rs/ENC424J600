@@ -15,6 +15,9 @@ pub mod tx;
 #[cfg(feature="smoltcp")]
 pub mod smoltcp_phy;
 
+/// Max raw frame array size
+pub const RAW_FRAME_LENGTH_MAX: usize = 0x1000;
+
 pub trait EthController<'c> {
     fn init_dev(&mut self, delay: &mut dyn DelayUs<u16>) -> Result<(), EthControllerError>;
     fn init_rxbuf(&mut self) -> Result<(), EthControllerError>;
@@ -94,7 +97,7 @@ impl <'c, SPI: Transfer<u8>,
         // Set ERXTAIL pointer
         self.spi_port.write_reg_16b(spi::addrs::ERXTAIL, self.rx_buf.get_tail_addr())?;
         // Set MAMXFL to maximum number of bytes in each accepted packet
-        self.spi_port.write_reg_16b(spi::addrs::MAMXFL, rx::RAW_FRAME_LENGTH_MAX as u16)?;
+        self.spi_port.write_reg_16b(spi::addrs::MAMXFL, RAW_FRAME_LENGTH_MAX as u16)?;
         // Enable RXEN (ECON1<0>)
         let econ1 = self.spi_port.read_reg_16b(spi::addrs::ECON1)?;
         self.spi_port.write_reg_16b(spi::addrs::ECON1, 0x1 | (econ1 & 0xfffe))?;
@@ -135,7 +138,7 @@ impl <'c, SPI: Transfer<u8>,
         rx_packet.write_to_rsv(&rsv_buf[1..]);
         rx_packet.update_frame_length();
         // Read frame bytes
-        let mut frame_buf = [0; rx::RAW_FRAME_LENGTH_MAX];
+        let mut frame_buf = [0; RAW_FRAME_LENGTH_MAX];
         self.spi_port.read_rxdat(&mut frame_buf, rx_packet.get_frame_length())?;
         rx_packet.copy_frame_from(&frame_buf[1..]);
         // Set ERXTAIL pointer to (next_addr - 2)
@@ -157,7 +160,7 @@ impl <'c, SPI: Transfer<u8>,
         self.spi_port.write_reg_16b(spi::addrs::EGPWRPT, self.tx_buf.get_next_addr())?;
         // Copy packet data to SRAM Buffer
         // 1-byte Opcode is included
-        let mut txdat_buf: [u8; tx::RAW_FRAME_LENGTH_MAX + 1] = [0; tx::RAW_FRAME_LENGTH_MAX + 1];
+        let mut txdat_buf: [u8; RAW_FRAME_LENGTH_MAX + 1] = [0; RAW_FRAME_LENGTH_MAX + 1];
         packet.write_frame_to(&mut txdat_buf[1..]);
         self.spi_port.write_txdat(&mut txdat_buf, packet.get_frame_length())?;
         // Set ETXST to packet start address
@@ -170,7 +173,7 @@ impl <'c, SPI: Transfer<u8>,
         // Poll TXRTS (ECON1<1>) to check if it is reset
         loop {
             econ1_lo = self.spi_port.read_reg_8b(spi::addrs::ECON1)?;
-            if econ1_lo & 0x02 == 0x02 { break }
+            if econ1_lo & 0x02 == 0 { break }
         }
         // TODO: Read ETXSTAT to understand Ethernet transmission status
         // (See: Register 9-2, ENC424J600 Data Sheet)

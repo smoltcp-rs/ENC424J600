@@ -1,9 +1,8 @@
+use crate::RAW_FRAME_LENGTH_MAX;
+
 /// SRAM Addresses
 pub const GPBUFST_DEFAULT: u16 = 0x0000;    // Start of General-Purpose SRAM Buffer
 pub const GPBUFEN_DEFAULT: u16 = 0x5340;    // End of General-Purpose SRAM Buffer == ERXST default
-
-/// Max raw frame array size
-pub const RAW_FRAME_LENGTH_MAX: usize = 0x1000;
 
 /// Struct for TX Buffer on the hardware
 /// TODO: Should be a singleton

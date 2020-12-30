@@ -1,10 +1,10 @@
+use crate::RAW_FRAME_LENGTH_MAX;
+
 /// SRAM Addresses
 pub const ERXST_DEFAULT: u16 = 0x5340;
 pub const ERXTAIL_DEFAULT: u16 = 0x5ffe;
 pub const RX_MAX_ADDRESS: u16 = 0x5fff;
 
-/// Max raw frame array size
-pub const RAW_FRAME_LENGTH_MAX: usize = 0x1000;
 /// Receive Status Vector Length
 pub const RSV_LENGTH: usize = 6;
 
